@@ -1,4 +1,12 @@
-use bevy::{gizmos, math::NormedVectorSpace, prelude::*, window::PrimaryWindow};
+use bevy::{
+    gizmos,
+    math::{NormedVectorSpace, VectorSpace},
+    prelude::*,
+    render::render_resource::encase::private::Length,
+    transform,
+    window::PrimaryWindow,
+};
+use iyes_perf_ui::{entries::PerfUiFramerateEntries, prelude::*};
 
 pub struct ParticleScene<S: States> {
     pub state: S,
@@ -10,7 +18,7 @@ impl<S: States> Plugin for ParticleScene<S> {
             OnEnter(self.state.clone()),
             (particles_setup, || println!("Particles Load!")),
         )
-        .add_systems(Update, (particles_update, particles_draw))
+        .add_systems(Update, (particles_update))
         .add_systems(OnExit(self.state.clone()), particles_teardown);
     }
 }
@@ -23,14 +31,14 @@ pub struct ParticlesSceneCamera;
 
 #[derive(Component, Debug)]
 pub struct Particle {
-    pos: Vec2,
     vel: Vec2,
 }
 
 fn particles_setup(
     mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
-    _asset_server: Res<AssetServer>,
+    asset_server: Res<AssetServer>,
 ) {
     let window: &Window = window_query.get_single().unwrap();
 
@@ -41,23 +49,25 @@ fn particles_setup(
         ParticlesSceneCamera,
     ));
 
-    let mut particles_vec: Vec<Particle> = vec![];
+    let mesh = Triangle2d::new(Vec2::Y, Vec2::ZERO, Vec2::X);
+    let img = asset_server.load("1.png");
+
     for x in 0..(window.width() / PARTICLE_SPATIAL_INTERVAL) as i32 {
         for y in 0..(window.height() / PARTICLE_SPATIAL_INTERVAL) as i32 {
-            particles_vec.push(Particle {
-                pos: Vec2::new(
-                    x as f32 * PARTICLE_SPATIAL_INTERVAL,
-                    y as f32 * PARTICLE_SPATIAL_INTERVAL,
-                ),
-                vel: Vec2::ZERO,
-            });
+            commands.spawn((
+                Particle { vel: Vec2::ZERO },
+                Sprite {
+                    image: img.clone(),
+                    ..default()
+                },
+                Transform::from_xyz(x as f32, y as f32, 0.0),
+            ));
         }
     }
-    commands.spawn_batch(particles_vec);
 }
 
 fn particles_update(
-    mut particle_query: Query<&mut Particle>,
+    mut particle_query: Query<(&mut Particle, &mut Transform)>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
     window_query: Query<&Window, With<PrimaryWindow>>,
@@ -77,21 +87,25 @@ fn particles_update(
         }
     }
 
-    for mut particle in particle_query.iter_mut() {
+    for (mut particle, mut particle_transform) in particle_query.iter_mut() {
         // Friction
         particle.vel *= 0.99;
 
         // Bounds
-        if particle.pos.x < 0. || particle.pos.x > window.width() {
+        if particle_transform.translation.x < 0.
+            || particle_transform.translation.x > window.width()
+        {
             particle.vel.x *= -1.0;
         }
-        if particle.pos.y < 0. || particle.pos.y > window.height() {
+        if particle_transform.translation.y < 0.
+            || particle_transform.translation.y > window.height()
+        {
             particle.vel.y *= -1.0;
         }
 
         // Cursor Attraction
         if cursor_pos.x >= 0. {
-            let diff: Vec2 = cursor_pos - particle.pos;
+            let diff: Vec2 = cursor_pos - particle_transform.translation.xy();
             let diff_len = diff.length();
             let mut forceMagnitude: f32 = 1300. / (diff_len * diff_len);
             if (forceMagnitude > 0.8) {
@@ -101,25 +115,8 @@ fn particles_update(
         }
 
         // Apply vel
-        let vel_copy = Vec2::new(particle.vel.x, particle.vel.y);
-        particle.pos += vel_copy;
-    }
-}
-
-fn particles_draw(
-    particle_query: Query<&Particle>,
-    mut gizmos: Gizmos,
-    window_query: Query<&Window, With<PrimaryWindow>>,
-) {
-    for particle in particle_query.iter() {
-        gizmos.rect_2d(
-            Isometry2d {
-                translation: particle.pos,
-                ..Default::default()
-            },
-            Vec2::ONE,
-            PARTICLE_COLOR,
-        );
+        particle_transform.translation.x += particle.vel.x;
+        particle_transform.translation.y += particle.vel.y;
     }
 }
 
