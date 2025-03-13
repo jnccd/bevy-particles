@@ -1,4 +1,7 @@
-use bevy::{gizmos, math::NormedVectorSpace, prelude::*, window::PrimaryWindow};
+use bevy::{
+    gizmos, math::NormedVectorSpace, prelude::*, render::mesh::PrimitiveTopology,
+    window::PrimaryWindow,
+};
 
 pub struct ParticleScene<S: States> {
     pub state: S,
@@ -15,7 +18,7 @@ impl<S: States> Plugin for ParticleScene<S> {
     }
 }
 
-const PARTICLE_SPATIAL_INTERVAL: f32 = 5.0;
+const PARTICLE_SPATIAL_INTERVAL: f32 = 4.0;
 const PARTICLE_COLOR: Color = Color::srgb(0.3, 0.8, 1.0);
 
 #[derive(Component)]
@@ -27,9 +30,12 @@ pub struct Particle {
     vel: Vec2,
 }
 
+const TRIANGLE_2D: Triangle2d = Triangle2d::new(Vec2::Y, Vec2::ZERO, Vec2::X);
+
 fn particles_setup(
     mut commands: Commands,
     window_query: Query<&Window, With<PrimaryWindow>>,
+    mut meshes: ResMut<Assets<Mesh>>,
     _asset_server: Res<AssetServer>,
 ) {
     let window: &Window = window_query.get_single().unwrap();
@@ -40,6 +46,9 @@ fn particles_setup(
         Transform::from_xyz(window.width() / 2.0, window.height() / 2.0, 1.0),
         ParticlesSceneCamera,
     ));
+
+    let mesh = Triangle2d::new(Vec2::Y, Vec2::ZERO, Vec2::X);
+    meshes.add(mesh);
 
     let mut particles_vec: Vec<Particle> = vec![];
     for x in 0..(window.width() / PARTICLE_SPATIAL_INTERVAL) as i32 {
@@ -53,6 +62,7 @@ fn particles_setup(
             });
         }
     }
+    print!("??{}", particles_vec.len());
     commands.spawn_batch(particles_vec);
 }
 
@@ -112,12 +122,12 @@ fn particles_draw(
     window_query: Query<&Window, With<PrimaryWindow>>,
 ) {
     for particle in particle_query.iter() {
-        gizmos.rect_2d(
+        gizmos.primitive_2d(
+            &TRIANGLE_2D,
             Isometry2d {
                 translation: particle.pos,
                 ..Default::default()
             },
-            Vec2::ONE,
             PARTICLE_COLOR,
         );
     }
