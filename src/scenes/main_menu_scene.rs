@@ -1,8 +1,5 @@
 use crate::{AppState, TEXT_COLOR};
-use bevy::{
-    color::palettes::css::CRIMSON, prelude::*, text::cosmic_text::ttf_parser::Style,
-    window::PrimaryWindow,
-};
+use bevy::{color::palettes::css::CRIMSON, prelude::*, window::PrimaryWindow};
 
 pub struct MainMenuScene<S: States> {
     pub state: S,
@@ -43,7 +40,7 @@ struct SelectedOption;
 fn main_menu_setup(
     mut commands: Commands,
     window_query: Query<&Window, With<PrimaryWindow>>,
-    asset_server: Res<AssetServer>,
+    _asset_server: Res<AssetServer>,
 ) {
     let window: &Window = window_query.get_single().unwrap();
 
@@ -63,7 +60,7 @@ fn main_menu_setup(
         align_items: AlignItems::Center,
         ..default()
     };
-    let button_icon_node = Node {
+    let _button_icon_node = Node {
         width: Val::Px(30.0),
         // This takes the icons out of the flexbox flow, to be positioned exactly
         position_type: PositionType::Absolute,

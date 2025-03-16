@@ -1,5 +1,6 @@
 use bevy::{
-    gizmos, math::NormedVectorSpace, prelude::*, render::mesh::PrimitiveTopology,
+    core_pipeline::{bloom::Bloom, tonemapping::Tonemapping},
+    prelude::*,
     window::PrimaryWindow,
 };
 
@@ -19,7 +20,12 @@ impl<S: States> Plugin for ParticleScene<S> {
 }
 
 const PARTICLE_SPATIAL_INTERVAL: f32 = 4.0;
-const PARTICLE_COLOR: Color = Color::srgb(0.3, 0.8, 1.0);
+const COLOR_BRIGHTNESS_MULT: f32 = 3.;
+const PARTICLE_COLOR: Color = Color::srgb(
+    0.3 * COLOR_BRIGHTNESS_MULT,
+    0.8 * COLOR_BRIGHTNESS_MULT,
+    1.0 * COLOR_BRIGHTNESS_MULT,
+);
 
 #[derive(Component)]
 pub struct ParticlesSceneCamera;
@@ -42,7 +48,25 @@ fn particles_setup(
 
     // Camera
     commands.spawn((
-        Camera2d { ..default() },
+        Camera2d,
+        Camera {
+            hdr: true,
+            clear_color: ClearColorConfig::Custom(Color::BLACK),
+            ..default()
+        },
+        Tonemapping::TonyMcMapface,
+        Bloom {
+            intensity: 0.6,
+            low_frequency_boost: 0.3,
+            low_frequency_boost_curvature: 0.5,
+            high_pass_frequency: 0.4,
+            composite_mode: bevy::core_pipeline::bloom::BloomCompositeMode::Additive,
+            prefilter: bevy::core_pipeline::bloom::BloomPrefilter {
+                threshold: 0.,
+                threshold_softness: 0.,
+            },
+            ..Default::default()
+        },
         Transform::from_xyz(window.width() / 2.0, window.height() / 2.0, 1.0),
         ParticlesSceneCamera,
     ));
@@ -62,7 +86,7 @@ fn particles_setup(
             });
         }
     }
-    print!("??{}", particles_vec.len());
+    print!("#Particles: {}", particles_vec.len());
     commands.spawn_batch(particles_vec);
 }
 
@@ -103,11 +127,11 @@ fn particles_update(
         if cursor_pos.x >= 0. {
             let diff: Vec2 = cursor_pos - particle.pos;
             let diff_len = diff.length();
-            let mut forceMagnitude: f32 = 1300. / (diff_len * diff_len);
-            if (forceMagnitude > 0.8) {
-                forceMagnitude = 0.8;
+            let mut force_magnitude: f32 = 1300. / (diff_len * diff_len);
+            if force_magnitude > 0.8 {
+                force_magnitude = 0.8;
             }
-            particle.vel += diff / diff_len * forceMagnitude;
+            particle.vel += diff / diff_len * force_magnitude;
         }
 
         // Apply vel
@@ -116,11 +140,7 @@ fn particles_update(
     }
 }
 
-fn particles_draw(
-    particle_query: Query<&Particle>,
-    mut gizmos: Gizmos,
-    window_query: Query<&Window, With<PrimaryWindow>>,
-) {
+fn particles_draw(particle_query: Query<&Particle>, mut gizmos: Gizmos) {
     for particle in particle_query.iter() {
         gizmos.primitive_2d(
             &TRIANGLE_2D,
