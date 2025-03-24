@@ -51,7 +51,6 @@ fn main_menu_setup(
         MainMenuCamera,
     ));
 
-    // Common style for all buttons on the screen
     let button_node = Node {
         width: Val::Px(300.0),
         height: Val::Px(65.0),
@@ -62,9 +61,7 @@ fn main_menu_setup(
     };
     let _button_icon_node = Node {
         width: Val::Px(30.0),
-        // This takes the icons out of the flexbox flow, to be positioned exactly
         position_type: PositionType::Absolute,
-        // The icon will be close to the left border of the button
         left: Val::Px(10.0),
         ..default()
     };
