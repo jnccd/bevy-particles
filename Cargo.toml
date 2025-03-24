@@ -3,13 +3,16 @@ name = "bevy-particles"
 version = "0.1.0"
 edition = "2024"
 
+[dependencies]
+bevy = "0.15.3"
+iyes_perf_ui = "0.4.0"
+
+[target.wasm32-unknown-unknown]
+runner = "wasm-server-runner"
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"']
+
 [profile.dev.package."*"]
 opt-level = 3
 
 [profile.dev]
 opt-level = 2
-
-[dependencies]
-bevy = "0.15.3"
-rand = "0.9.0"
-iyes_perf_ui = "0.4.0"
